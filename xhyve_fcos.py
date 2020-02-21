@@ -22,7 +22,6 @@ class FCOSXhyve:
         self.kernel_file = ""
         self.disk_file = ""
         self.config = {}
-        self.uuid = uuid.uuid4()
 
         # Setup
         self._load_config()
@@ -34,6 +33,9 @@ class FCOSXhyve:
             item = "hypervisor"
             if item not in data:
                 data[item] = "hyperkit"
+            item = "uuid"
+            if item not in data:
+                data[item] = uuid.uuid4()
             item = "cores"
             if item not in data:
                 data[item] = 1
@@ -101,17 +103,15 @@ class FCOSXhyve:
     def create(self):
         """Create VM using xhyve"""
 
-        # 1. Create list of command line arguments
-        # 2. Give list to sp.run() and start xhyve
-        # 3. Make network work
-        # 4. Load ignition file from URL
+        # 1. Give list to sp.run() and start {hypervisor}
         stream = self.config['stream']
         ignition_url = self.config['ignition_url']
         hypervisor = self.config['hypervisor']
         xhyve_args = [
+            "sudo",
             f"{hypervisor}",
             "-U",
-            str(self.uuid),
+            str(self.config['uuid']),
             "-m",
             f"{self.config['memory']}G",
             "-c",
@@ -131,8 +131,9 @@ class FCOSXhyve:
             f'ignition.config.url={ignition_url} '
             f'coreos.inst.stream={stream}"',
         ]
-        print(" ".join(xhyve_args))
+        # sp.run(xhyve_args, shell=True, check=True)
         logging.info("running xhyve")
+        logging.info(" ".join(xhyve_args))
 
 
 def main():
