@@ -103,7 +103,7 @@ class FCOSXhyve:
     def create(self):
         """Create VM using xhyve"""
 
-        # 1. Give list to sp.run() and start {hypervisor}
+        # TODO: Give list to sp.run() and start {hypervisor}
         stream = self.config['stream']
         ignition_url = self.config['ignition_url']
         hypervisor = self.config['hypervisor']
