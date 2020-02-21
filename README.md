@@ -4,7 +4,7 @@
 
 - Every boot generates new SSH host keys.
 - On my laptop it works with xhyve and hyperkit (which comes with docker desktop). YMMV.
-- Load fcct, the fcc to ign transpiler, from [https://github.com/coreos/fcct](the official repo)
+- Load fcct, the fcc to ign transpiler, from [the official repo](https://github.com/coreos/fcct)
 - `./fcct --pretty --strict < default.fcc > default.ign`
 - Copy default.ign to a web server, and insert the url into settings.json
 - Recycling the UUID should result in the same IP. Should.
