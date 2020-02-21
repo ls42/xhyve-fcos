@@ -1,4 +1,5 @@
 {
+  "hypervisor": "hyperkit",
   "cores": 2,
   "memory": 4,
   "ignition_url": "https://files.ps1.sh/default.ign"

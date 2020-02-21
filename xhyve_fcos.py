@@ -31,6 +31,9 @@ class FCOSXhyve:
 
     def _load_config(self):
         def defaults(data):
+            item = "hypervisor"
+            if item not in data:
+                data[item] = "hyperkit"
             item = "cores"
             if item not in data:
                 data[item] = 1
@@ -104,8 +107,9 @@ class FCOSXhyve:
         # 4. Load ignition file from URL
         stream = self.config['stream']
         ignition_url = self.config['ignition_url']
+        hypervisor = self.config['hypervisor']
         xhyve_args = [
-            "xhyve",
+            f"{hypervisor}",
             "-U",
             str(self.uuid),
             "-m",
@@ -126,7 +130,6 @@ class FCOSXhyve:
             f'ip=dhcp rd.neednet=1 console=tty0 console=ttyS0 ignition.platform.id=metal ignition.firstboot '
             f'ignition.config.url={ignition_url} '
             f'coreos.inst.stream={stream}"',
-            # f'console=ttyS0 ignition.config.url=https://files.ps1.sh/fcos.ign"',
         ]
         print(" ".join(xhyve_args))
         logging.info("running xhyve")
