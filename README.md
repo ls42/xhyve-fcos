@@ -2,6 +2,7 @@
 
 ## notes
 
+- Every boot generates new SSH host keys.
 - On my laptop it works with xhyve and hyperkit (which comes with docker desktop). YMMV.
 - Load fcct, the fcc to ign transpiler, from [https://github.com/coreos/fcct](the official repo)
 - `./fcct --pretty --strict < default.fcc > default.ign`
