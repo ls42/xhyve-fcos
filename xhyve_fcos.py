@@ -1,20 +1,19 @@
 import requests
 import logging
 import re
+import json
+import uuid
+import subprocess as sp
 from os.path import join
 
-import subprocess as sp
-
 DOWNLOAD_DIR = "./static/"  # TODO: Make configurable via cli args
-RELEASE_JSON_URL = "https://builds.coreos.fedoraproject.org/streams/stable.json"
 
 
 class FCOSXhyve:
-    def __init__(self, outdir: str, json_url: str):
+    def __init__(self, outdir: str):
         logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
         self.outdir = outdir
-        self.json_url = json_url
 
         # Properties
         self.download_location = ""
@@ -22,27 +21,49 @@ class FCOSXhyve:
         self.initrd_file = ""
         self.kernel_file = ""
         self.disk_file = ""
+        self.config = {}
+        self.uuid = uuid.uuid4()
 
         # Setup
+        self._load_config()
         self._get_links()
         self._parse_files()
+
+    def _load_config(self):
+        def defaults(data):
+            item = "cores"
+            if item not in data:
+                data[item] = 1
+            item = "memory"
+            if item not in data:
+                data[item] = 1
+            item = "net"
+            if item not in data:
+                data[item] = "-s 2:0,virtio-net"
+            item = "stream"
+            if item not in data:
+                data[item] = "stable"
+            return data
+
+        with open("./settings.json", "r") as f:
+            self.config = json.load(f, object_hook=defaults)
 
     def _get_links(self):
         """
         Parse the JSON release file into a list of files to download
 
-        We assume, that all three files are located in the same directory.
+        We assume, that all two files are located in the same directory.
         If that's not the case, downloading will fail.
         """
-        parsed_json = requests.get(self.json_url).json()
-        download_formats = parsed_json["architectures"]["x86_64"]["artifacts"]["metal"]["formats"]
-        self.download_location = download_formats["pxe"]["kernel"]["location"].rsplit(
-            "/", maxsplit=1
-        )[0]
+        json_url = f"https://builds.coreos.fedoraproject.org/streams/{self.config['stream']}.json"
+        parsed_json = requests.get(json_url).json()
+        download_pxe = parsed_json["architectures"]["x86_64"]["artifacts"]["metal"]["formats"][
+            "pxe"
+        ]
+        self.download_location = download_pxe["kernel"]["location"].rsplit("/", maxsplit=1)[0]
         self.list = [
-            download_formats["pxe"]["kernel"]["location"].rsplit("/", maxsplit=1)[1],
-            download_formats["pxe"]["initramfs"]["location"].rsplit("/", maxsplit=1)[1],
-            # download_formats["raw.xz"]["disk"]["location"].rsplit("/", maxsplit=1)[1], # might only need the other two
+            download_pxe["kernel"]["location"].rsplit("/", maxsplit=1)[1],
+            download_pxe["initramfs"]["location"].rsplit("/", maxsplit=1)[1],
         ]
         logging.info("download list created")
 
@@ -75,12 +96,35 @@ class FCOSXhyve:
 
         # 1. Create list of command line arguments
         # 2. Give list to sp.run() and start xhyve
-
+        # 3. Make network work
+        # 4. Load ignition file from URL
+        xhyve_args = [
+            "xhyve",
+            "-U",
+            str(self.uuid),
+            "-m",
+            f"{self.config['memory']}G",
+            "-c",
+            f"{self.config['cores']}",
+            "-A",
+            "-s",
+            "2:0,virtio-net",
+            "-s",
+            "0:0,hostbridge",
+            "-s",
+            "31,lpc",
+            "-l",
+            "com1,stdio",
+            "-f",
+            f'kexec,{self.outdir}{self.kernel_file},{self.outdir}{self.initrd_file},"earlyprintk=serial '
+            f'console=ttyS0 ignition.config.url=https://files.ps1.sh/fcos.ign"',
+        ]
+        print(" ".join(xhyve_args))
         logging.info("running xhyve")
 
 
 def main():
-    fcos = FCOSXhyve(DOWNLOAD_DIR, RELEASE_JSON_URL)
+    fcos = FCOSXhyve(DOWNLOAD_DIR)
     fcos.create()
 
 
