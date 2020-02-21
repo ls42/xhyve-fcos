@@ -1,5 +1,9 @@
 # xhyve wrapper for Fedora CoreOS
 
+## Disclaimer
+
+This thrown together repo by default loads a ignition config from my web server and loads my private key. So definitely change `ignition_url` in settings.json.
+
 ## notes
 
 - Every boot generates new SSH host keys.
