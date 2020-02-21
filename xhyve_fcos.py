@@ -43,6 +43,10 @@ class FCOSXhyve:
             item = "stream"
             if item not in data:
                 data[item] = "stable"
+            item = "ignition_url"
+            if item not in data:
+                data[item] = "http://192.168.64.1:8000/default.ign"
+                # `python -m http.server --bind 192.168.64.1`
             return data
 
         with open("./settings.json", "r") as f:
@@ -98,6 +102,8 @@ class FCOSXhyve:
         # 2. Give list to sp.run() and start xhyve
         # 3. Make network work
         # 4. Load ignition file from URL
+        stream = self.config['stream']
+        ignition_url = self.config['ignition_url']
         xhyve_args = [
             "xhyve",
             "-U",
@@ -117,7 +123,10 @@ class FCOSXhyve:
             "com1,stdio",
             "-f",
             f'kexec,{self.outdir}{self.kernel_file},{self.outdir}{self.initrd_file},"earlyprintk=serial '
-            f'console=ttyS0 ignition.config.url=https://files.ps1.sh/fcos.ign"',
+            f'ip=dhcp rd.neednet=1 console=tty0 console=ttyS0 ignition.platform.id=metal ignition.firstboot '
+            f'ignition.config.url={ignition_url} '
+            f'coreos.inst.stream={stream}"',
+            # f'console=ttyS0 ignition.config.url=https://files.ps1.sh/fcos.ign"',
         ]
         print(" ".join(xhyve_args))
         logging.info("running xhyve")
