@@ -41,7 +41,7 @@ class FCOSXhyve:
                 data[item] = 1
             item = "memory"
             if item not in data:
-                data[item] = 1
+                data[item] = 2
             item = "net"
             if item not in data:
                 data[item] = "-s 2:0,virtio-net"
