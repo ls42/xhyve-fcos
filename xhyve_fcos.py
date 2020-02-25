@@ -3,8 +3,9 @@ import logging
 import re
 import json
 import uuid
+import hashlib
 import subprocess as sp
-from os.path import join
+import os.path
 
 DOWNLOAD_DIR = "./static/"  # TODO: Make configurable via cli args
 
@@ -71,17 +72,33 @@ class FCOSXhyve:
         ]
         self.download_location = download_pxe["kernel"]["location"].rsplit("/", maxsplit=1)[0]
         self.list = [
-            download_pxe["kernel"]["location"].rsplit("/", maxsplit=1)[1],
-            download_pxe["initramfs"]["location"].rsplit("/", maxsplit=1)[1],
+            {
+                "file": download_pxe["kernel"]["location"].rsplit("/", maxsplit=1)[1],
+                "sha256": download_pxe["kernel"]["sha256"],
+            },
+            {
+                "file": download_pxe["initramfs"]["location"].rsplit("/", maxsplit=1)[1],
+                "sha256": download_pxe["initramfs"]["sha256"],
+            },
         ]
         logging.info("download list created")
 
     def download(self):
         """Download all neccessary files for booting fcos on xhyve"""
-        for file_name in self.list:
-            output_file_name = join(self.outdir, file_name)
-            logging.info(f"downloading file {file_name}")
-            r = requests.get(f"{self.download_location}/{file_name}", stream=True)
+        for f in self.list:
+            output_file_name = os.path.join(self.outdir, f['file'])
+            try:
+                with open(output_file_name, "rb") as output_file_content:
+                    output_file_content = output_file_content.read()
+                    output_file_hash = hashlib.sha256(output_file_content).hexdigest()
+                    if output_file_hash == f['sha256']:
+                        logging.info(f"skipping existing file {f['file']}")
+                        continue
+            except FileNotFoundError:
+                pass
+
+            logging.info(f"downloading file {f['file']}")
+            r = requests.get(f"{self.download_location}/{f['file']}", stream=True)
             with open(output_file_name, "wb") as fd:
                 for chunk in r.iter_content(chunk_size=128):
                     fd.write(chunk)
@@ -91,27 +108,27 @@ class FCOSXhyve:
         initrd_pattern = re.compile("fedora-coreos.*initramfs.*", re.IGNORECASE)
         kernel_pattern = re.compile("fedora-coreos.*live-kernel.*", re.IGNORECASE)
         disk_pattern = re.compile("fedora-coreos.*metal.*", re.IGNORECASE)
-        for item in self.list:
-            if initrd_pattern.match(item):
-                self.initrd_file = item
-            if kernel_pattern.match(item):
-                self.kernel_file = item
-            if disk_pattern.match(item):
-                self.disk_file = item
+        for f in self.list:
+            if initrd_pattern.match(f['file']):
+                self.initrd_file = f['file']
+            if kernel_pattern.match(f['file']):
+                self.kernel_file = f['file']
+            if disk_pattern.match(f['file']):
+                self.disk_file = f['file']
         logging.info("files parsed")
 
     def create(self):
         """Create VM using xhyve"""
 
         # TODO: Give list to sp.run() and start {hypervisor}
-        stream = self.config['stream']
-        ignition_url = self.config['ignition_url']
-        hypervisor = self.config['hypervisor']
+        stream = self.config["stream"]
+        ignition_url = self.config["ignition_url"]
+        hypervisor = self.config["hypervisor"]
         xhyve_args = [
             "sudo",
             f"{hypervisor}",
             "-U",
-            str(self.config['uuid']),
+            str(self.config["uuid"]),
             "-m",
             f"{self.config['memory']}G",
             "-c",
@@ -127,8 +144,8 @@ class FCOSXhyve:
             "com1,stdio",
             "-f",
             f'kexec,{self.outdir}{self.kernel_file},{self.outdir}{self.initrd_file},"earlyprintk=serial '
-            f'ip=dhcp rd.neednet=1 console=tty0 console=ttyS0 ignition.platform.id=metal ignition.firstboot '
-            f'ignition.config.url={ignition_url} '
+            f"ip=dhcp rd.neednet=1 console=tty0 console=ttyS0 ignition.platform.id=metal ignition.firstboot "
+            f"ignition.config.url={ignition_url} "
             f'coreos.inst.stream={stream}"',
         ]
         # sp.run(xhyve_args, shell=True, check=True)
@@ -138,6 +155,7 @@ class FCOSXhyve:
 
 def main():
     fcos = FCOSXhyve(DOWNLOAD_DIR)
+    fcos.download()
     fcos.create()
 
 
