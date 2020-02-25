@@ -104,17 +104,14 @@ class FCOSXhyve:
                     fd.write(chunk)
 
     def _parse_files(self):
-        """Find out which file is the kernel, which the initrd and which the boot image"""
+        """Find out which file is the kernel and which the initrd"""
         initrd_pattern = re.compile("fedora-coreos.*initramfs.*", re.IGNORECASE)
         kernel_pattern = re.compile("fedora-coreos.*live-kernel.*", re.IGNORECASE)
-        disk_pattern = re.compile("fedora-coreos.*metal.*", re.IGNORECASE)
         for f in self.list:
             if initrd_pattern.match(f['file']):
                 self.initrd_file = f['file']
             if kernel_pattern.match(f['file']):
                 self.kernel_file = f['file']
-            if disk_pattern.match(f['file']):
-                self.disk_file = f['file']
         logging.info("files parsed")
 
     def create(self):
