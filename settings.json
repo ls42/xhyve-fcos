@@ -3,5 +3,6 @@
   "uuid": "8919ea16-265a-453a-98cc-f99982772248",
   "cores": 2,
   "memory": 4,
-  "ignition_url": "https://files.ps1.sh/default.ign"
+  "output_path": "/tmp/",
+  "ignition_url": "https://example.com/default.ign"
 }

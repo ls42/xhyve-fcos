@@ -7,14 +7,10 @@ import hashlib
 import subprocess as sp
 import os.path
 
-DOWNLOAD_DIR = "./static/"  # TODO: Make configurable via cli args
-
 
 class FCOSXhyve:
-    def __init__(self, outdir: str):
+    def __init__(self):
         logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
-
-        self.outdir = outdir
 
         # Properties
         self.download_location = ""
@@ -49,13 +45,16 @@ class FCOSXhyve:
             item = "stream"
             if item not in data:
                 data[item] = "stable"
+            item = "output_path"
+            if item not in data:
+                data[item] = "/tmp/"
             item = "ignition_url"
             if item not in data:
                 data[item] = "http://192.168.64.1:8000/default.ign"
                 # `python -m http.server --bind 192.168.64.1`
             return data
 
-        with open("./settings.json", "r") as f:
+        with open(os.path.expanduser("~/.config/xhyve_fcos.json"), "r") as f:
             self.config = json.load(f, object_hook=defaults)
 
     def _get_links(self):
@@ -86,7 +85,7 @@ class FCOSXhyve:
     def download(self):
         """Download all neccessary files for booting fcos on xhyve"""
         for f in self.list:
-            output_file_name = os.path.join(self.outdir, f['file'])
+            output_file_name = os.path.join(self.config['output_path'], f['file'])
             try:
                 with open(output_file_name, "rb") as output_file_content:
                     output_file_content = output_file_content.read()
@@ -121,6 +120,7 @@ class FCOSXhyve:
         stream = self.config["stream"]
         ignition_url = self.config["ignition_url"]
         hypervisor = self.config["hypervisor"]
+        outdir = self.config["output_path"]
         xhyve_args = [
             "sudo",
             f"{hypervisor}",
@@ -140,7 +140,7 @@ class FCOSXhyve:
             "-l",
             "com1,stdio",
             "-f",
-            f'kexec,{self.outdir}{self.kernel_file},{self.outdir}{self.initrd_file},"earlyprintk=serial '
+            f'kexec,{outdir}{self.kernel_file},{outdir}{self.initrd_file},"earlyprintk=serial '
             f"ip=dhcp rd.neednet=1 console=tty0 console=ttyS0 ignition.platform.id=metal ignition.firstboot "
             f"ignition.config.url={ignition_url} "
             f'coreos.inst.stream={stream}"',
@@ -151,7 +151,7 @@ class FCOSXhyve:
 
 
 def main():
-    fcos = FCOSXhyve(DOWNLOAD_DIR)
+    fcos = FCOSXhyve()
     fcos.download()
     fcos.create()
 

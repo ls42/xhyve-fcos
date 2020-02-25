@@ -2,5 +2,5 @@
 static/
 upstream/
 .idea/
-
+__pycache__/
 fcct
