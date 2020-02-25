@@ -9,6 +9,7 @@ This thrown together repo by default loads a ignition config from my web server 
 ## notes
 
 - Every boot generates new SSH host keys.
+- copy `settings.json` to `~/.config/xhyve_fcos.json` for the script to accept configuration.
 - On my laptop it works with xhyve and hyperkit (which comes with docker desktop). YMMV.
 - Load fcct, the fcc to ign transpiler, from [the official repo](https://github.com/coreos/fcct)
 - `./fcct --pretty --strict < default.fcc > default.ign`
